@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desafío: IVA vs IVB</title>
+    <!-- Incluimos Tailwind CSS para los estilos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fuente personalizada para un look más amigable */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Estilos para la transición de la barra de progreso */
+        .progress-bar-inner {
+            transition: width 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center p-4">
+
+    <div id="game-container" class="w-full max-w-4xl mx-auto">
+
+        <!-- --- 1. PANTALLA DE INICIO --- -->
+        <div id="start-screen" class="text-center p-8 bg-gray-800 rounded-lg shadow-xl">
+            <h1 class="text-4xl md:text-5xl font-bold text-cyan-400 mb-4">¿Quién sabe más del Juan Pablo?</h1>
+            <h2 class="text-3xl font-semibold mb-8">IVA vs IVB</h2>
+            <p class="text-lg text-gray-300 mb-10">¡Prepárense! <br> 10 representantes de cada curso responderán 10 preguntas. <br>¡El curso que tenga más correctas gana!</p>
+            <button id="start-button" class="w-full md:w-1/2 bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-bold py-4 px-8 rounded-lg text-2xl transition duration-300 transform hover:scale-105">
+                ¡A Jugar!
+            </button>
+        </div>
+
+        <!-- --- 2. PANTALLA DE JUEGO (Oculta por defecto) --- -->
+        <div id="game-screen" class="hidden">
+            
+            <!-- Marcadores y Turno -->
+            <div class="mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4">
+                    <!-- Marcador Equipo IVA -->
+                    <div class="bg-red-600 p-4 rounded-lg shadow-md w-full md:w-1/3 text-center mb-4 md:mb-0">
+                        <h2 class="text-2xl font-bold">Equipo IVA</h2>
+                        <p class="text-4xl font-extrabold" id="score-iva">0</p>
+                    </div>
+                    
+                    <!-- Turno Actual -->
+                    <div class="text-center mx-4">
+                         <h3 class="text-2xl font-semibold text-gray-300">Turno de:</h3>
+                         <h2 class="text-5xl font-extrabold" id="current-turn"></h2>
+                    </div>
+
+                    <!-- Marcador Equipo IVB -->
+                    <div class="bg-blue-600 p-4 rounded-lg shadow-md w-full md:w-1/3 text-center">
+                        <h2 class="text-2xl font-bold">Equipo IVB</h2>
+                        <p class="text-4xl font-extrabold" id="score-ivb">0</p>
+                    </div>
+                </div>
+
+                <!-- Barra de Progreso -->
+                <div class="w-full bg-gray-700 rounded-full h-6">
+                    <div id="progress-bar" class="bg-cyan-400 h-6 rounded-full text-center text-gray-800 font-semibold progress-bar-inner" style="width: 0%;">
+                        Pregunta <span id="question-count-display">0</span> / 20
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenedor de Pregunta y Opciones -->
+            <div id="question-container" class="bg-gray-800 p-8 rounded-lg shadow-xl">
+                <h2 id="question-text" class="text-3xl font-semibold mb-8 text-center min-h-[100px]">
+                    Cargando pregunta...
+                </h2>
+                
+                <!-- Cuadrícula de Opciones -->
+                <div id="options-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Las opciones se generarán con JavaScript -->
+                    <!-- Ejemplo de opción:
+                    <button class="option-button bg-gray-700 hover:bg-gray-600 p-6 rounded-lg text-xl font-medium transition duration-200">
+                        Opción A
+                    </button>
+                    -->
+                </div>
+
+                <!-- Feedback (Correcto/Incorrecto) -->
+                <div id="feedback-message" class="mt-6 text-center text-3xl font-bold hidden"></div>
+            </div>
+        </div>
+
+        <!-- --- 3. PANTALLA FINAL (Oculta por defecto) --- -->
+        <div id="end-screen" class="text-center p-8 bg-gray-800 rounded-lg shadow-xl hidden">
+            <h1 class="text-5xl font-bold text-cyan-400 mb-6">¡Juego Terminado!</h1>
+            <h2 id="winner-message" class="text-4xl font-semibold mb-8"></h2>
+            
+            <div class="flex justify-around mb-8 text-3xl">
+                <div>
+                    <span class="font-bold text-red-400">IVA:</span>
+                    <span id="final-score-iva" class="font-extrabold">0</span>
+                </div>
+                <div>
+                    <span class="font-bold text-blue-400">IVB:</span>
+                    <span id="final-score-ivb" class="font-extrabold">0</span>
+                </div>
+            </div>
+
+            <button id="restart-button" class="w-full md:w-1/2 bg-cyan-500 hover:bg-cyan-400 text-gray-900 font-bold py-4 px-8 rounded-lg text-2xl transition duration-300 transform hover:scale-105">
+                Volver a Jugar
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. CONFIGURACIÓN DEL JUEGO ---
+
+        // IMPORTANTE: Aquí debes agregar tus 20 preguntas (10 para IVA, 10 para IVB).
+        // Sigue el formato: { question: "...", options: ["...", "...", "...", "..."], answer: "..." }
+        // La primera opción siempre debe ser la respuesta correcta para este ejemplo,
+        // pero luego las mezclaremos con la función shuffle.
+        
+        const allQuestions = [
+            // Preguntas para IVA (10)
+            { 
+                question: "¿Cuál es el animal que el profesor Antonio Collao menciona seguido en sus clases?",
+                options: ["Su gato", "Su perro", "Un caballo", "Un hámster"], 
+                answer: "Su gato" 
+            },
+            { 
+                question: "¿Cuál es el segundo nombre de la profesora jefe del IV°A, Daniela Barra?",
+                options: ["Alejandra", "Daniela", "Victoria", "Barra"], 
+                answer: "Alejandra" 
+            },
+            { 
+                question: "¿De qué asignatura es profesor el orientador Pablo Avilés?",
+                options: ["Ciencias Naturales", "Matemáticas", "Ciencias Sociales", "Religión"], 
+                answer: "Ciencias Naturales" 
+            },
+            { 
+                question: "¿Quién es el “hijo” de la profesora Francisca Rojas?",
+                options: ["Boris Citanovic", "Manuel Avila", "Benjamín Palacios", "Gabriel Ortiz"], 
+                answer: "Boris Citanovic" 
+            },
+            { 
+                question: "¿Qué profe daba la clase de Física antes de la profesora Jessica?",
+                options: ["Christopher Lara", "Daniela Barra", "Constanza Rojas", "Pablo Aviles"], 
+                answer: "Christopher Lara" 
+            },
+            { 
+                question: "¿Qué es lo que hace enojar a la profesora Daniela Barra?",
+                options: ["El uso del celular en clases", "Dormir en clases", "Ser humanista", "Quererla mucho"], 
+                answer: "El uso del celular en clases" // <-- ¡No se especificó correcta, se puso la primera por defecto!
+            },
+            { 
+                question: "Deporte favorito del profesor Sergio:",
+                options: ["Basketball", "Racquetball", "Tenis", "Fútbol"], 
+                answer: "Basketball" 
+            },
+            { 
+                question: "Nombres de los hijos de la profesora Tamara.",
+                options: ["Emma y Bruno", "Rómulo y Remo", "Calixto y Melibea", "Gaspar y Ángela"], 
+                answer: "Emma y Bruno" 
+            },
+            { 
+                question: "¿De qué equipo de fútbol es la profesora Michelle Avilés?",
+                options: ["Colo colo", "Coquimbo Unido", "Unión Española", "Universidad Católica"], 
+                answer: "Colo colo" 
+            },
+            { 
+                question: "¿Qué asignatura impartía el Inspector General Miguel Maldonado?",
+                options: ["Educación Física", "Matemáticas", "Historia", "Ciencias Naturales"], 
+                answer: "Educación Física" 
+            },
+            // --- Fin de preguntas IVA ---
+            
+            // Preguntas para IVB (10)
+            { 
+                question: "¿Cuál es la frase que dice más seguido la profesora Kari?",
+                options: ["Gente bella", "Mi gente", "Niños buenos", "Niñeces lindes"], 
+                answer: "Gente bella" 
+            },
+            { 
+                question: "¿De qué asignatura es el jefe de utp Víctor Vásquez?",
+                options: ["Matemática", "Lenguaje", "Ciencias Sociales", "Educador de Párvulos"], 
+                answer: "Matemática" 
+            },
+            { 
+                question: "¿Cuánto/s gato/s tiene la profesora Kari?",
+                options: ["dos", "tres", "uno", "cuatro"], 
+                answer: "dos" 
+            },
+            { 
+                question: "¿Cuál es la parte más conocida del himno del colegio?",
+                options: ["“…Estudiantes, profesores…”", "“…Conocimiento aprendido en el aula…”", "“…El santo padre ha dado las luces…”"], 
+                answer: "“…Estudiantes, profesores…”" 
+            },
+            { 
+                question: "¿Cuántos profesores jefes ha tenido el IVB durante la media?",
+                options: ["3", "2", "1", "4"], 
+                answer: "3" 
+            },
+            { 
+                question: "¿Cómo se llamaba la banda del profesor de música Felipe Riveros ?",
+                options: ["Niebla", "Bruma", "Camanchaca", "Neblina"], 
+                answer: "Niebla" 
+            },
+            { 
+                question: "¿Qué profesor está a favor del voto voluntario?",
+                options: ["Antonio Collao", "Renato Aicardi", "Victor Vasquez", "Miguel Madonado"], 
+                answer: "Antonio Collao" 
+            },
+            { 
+                question: "¿Qué disciplina practicó la profesora Jessica Ortega?",
+                options: ["Karate", "Escalada", "Meditación", "Yoga"], 
+                answer: "Karate" 
+            },
+            { 
+                question: "¿Qué trae siempre en sus bolsillos la profesora Consuelo Mora?",
+                options: ["Todas las anteriores", "Pañuelos", "Dulces", "Lápices"], 
+                answer: "Todas las anteriores" 
+            },
+            { 
+                question: "¿En qué vehículo viene al colegio la profesora Camila Sánchez?",
+                options: ["Moto", "Bicicleta", "Auto", "Camioneta"], 
+                answer: "Moto" 
+            }
+            // --- Fin de preguntas IVB ---
+        ];
+
+        // --- 2. ELEMENTOS DEL DOM ---
+        
+        // Pantallas
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const endScreen = document.getElementById('end-screen');
+
+        // Botones
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+
+        // Elementos del Juego
+        const scoreIVA_El = document.getElementById('score-iva');
+        const scoreIVB_El = document.getElementById('score-ivb');
+        const currentTurnEl = document.getElementById('current-turn');
+        const progressBar = document.getElementById('progress-bar');
+        const questionCountDisplay = document.getElementById('question-count-display');
+        
+        const questionContainer = document.getElementById('question-container');
+        const questionTextEl = document.getElementById('question-text');
+        const optionsGrid = document.getElementById('options-grid');
+        const feedbackMessage = document.getElementById('feedback-message');
+
+        // Elementos de Pantalla Final
+        const winnerMessageEl = document.getElementById('winner-message');
+        const finalScoreIVA_El = document.getElementById('final-score-iva');
+        const finalScoreIVB_El = document.getElementById('final-score-ivb');
+
+        // --- 3. ESTADO DEL JUEGO ---
+        
+        let scores = { IVA: 0, IVB: 0 };
+        let currentTeam = 'IVA'; // Empieza el IVA
+        let questionIndex = 0; // Índice de la pregunta actual (0 a 19)
+        let questions = []; // Array de preguntas mezcladas
+        let acceptingAnswers = true; // Prevenir doble clic
+
+        // --- 4. FUNCIONES DEL JUEGO ---
+
+        /**
+         * Función para mezclar un array (Algoritmo Fisher-Yates)
+         * Se usa para mezclar las preguntas y las opciones.
+         */
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        /**
+         * Inicia o reinicia el juego.
+         */
+        function startGame() {
+            // Reiniciar estado
+            scores = { IVA: 0, IVB: 0 };
+            questionIndex = 0;
+            currentTeam = 'IVA'; // Siempre empieza IVA
+            acceptingAnswers = true;
+
+            // Mezclar las preguntas (las 10 de IVA primero, las 10 de IVB después)
+            const questionsIVA = shuffle(allQuestions.slice(0, 10));
+            const questionsIVB = shuffle(allQuestions.slice(10, 20));
+            
+            // Asignamos las preguntas por turno
+            questions = [];
+            for (let i = 0; i < 10; i++) {
+                questions.push(questionsIVA[i]); // Turno IVA
+                questions.push(questionsIVB[i]); // Turno IVB
+            }
+
+            // Actualizar UI
+            updateScoreboard();
+            feedbackMessage.classList.add('hidden');
+            
+            // Cambiar pantallas
+            startScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+
+            // Cargar la primera pregunta
+            loadNextQuestion();
+        }
+
+        /**
+         * Carga la siguiente pregunta o termina el juego.
+         */
+        function loadNextQuestion() {
+            // Limpiar opciones y feedback anteriores
+            optionsGrid.innerHTML = '';
+            feedbackMessage.classList.add('hidden');
+            feedbackMessage.textContent = '';
+            acceptingAnswers = true;
+
+            // Verificar si terminó el juego
+            if (questionIndex >= questions.length) {
+                endGame();
+                return;
+            }
+
+            // Determinar el equipo actual basado en el índice de la pregunta
+            // (Par es IVA, Impar es IVB)
+            currentTeam = (questionIndex % 2 === 0) ? 'IVA' : 'IVB';
+            
+            // Obtener la pregunta actual
+            const currentQuestion = questions[questionIndex];
+
+            // Actualizar UI
+            questionTextEl.textContent = currentQuestion.question;
+            updateScoreboard();
+
+            // Mezclar opciones de la pregunta actual
+            const shuffledOptions = shuffle([...currentQuestion.options]);
+
+            // Crear botones de opciones
+            shuffledOptions.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.classList.add('option-button', 'bg-gray-700', 'hover:bg-gray-600', 'p-6', 'rounded-lg', 'text-xl', 'font-medium', 'transition', 'duration-200', 'w-full');
+                button.addEventListener('click', () => selectAnswer(button, option, currentQuestion.answer));
+                optionsGrid.appendChild(button);
+            });
+        }
+
+        /**
+         * Maneja la selección de una respuesta.
+         */
+        function selectAnswer(buttonEl, selectedOption, correctAnswer) {
+            if (!acceptingAnswers) return; // Si ya se respondió, no hacer nada
+            acceptingAnswers = false;
+
+            const isCorrect = (selectedOption === correctAnswer);
+
+            // Mostrar feedback visual
+            if (isCorrect) {
+                // Respuesta Correcta
+                scores[currentTeam]++; // Sumar puntos al equipo actual
+                buttonEl.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                buttonEl.classList.add('bg-green-600');
+                feedbackMessage.textContent = "¡Correcto!";
+                feedbackMessage.classList.remove('hidden', 'text-red-500');
+                feedbackMessage.classList.add('text-green-500');
+            } else {
+                // Respuesta Incorrecta
+                buttonEl.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                buttonEl.classList.add('bg-red-700');
+                feedbackMessage.textContent = `Incorrecto. La respuesta era: ${correctAnswer}`;
+                feedbackMessage.classList.remove('hidden', 'text-green-500');
+                feedbackMessage.classList.add('text-red-500');
+
+                // Resaltar la correcta (opcional)
+                Array.from(optionsGrid.children).forEach(btn => {
+                    if (btn.textContent === correctAnswer) {
+                        btn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                        btn.classList.add('bg-green-600');
+                    }
+                });
+            }
+
+            // Actualizar marcadores
+            updateScoreboard();
+            
+            // Pasar a la siguiente pregunta después de un tiempo
+            questionIndex++;
+            setTimeout(loadNextQuestion, 2500); // Esperar 2.5 segundos
+        }
+
+        /**
+         * Actualiza los marcadores y la barra de progreso.
+         */
+        function updateScoreboard() {
+            scoreIVA_El.textContent = scores.IVA;
+            scoreIVB_El.textContent = scores.IVB;
+            
+            // Actualizar turno
+            currentTurnEl.textContent = currentTeam;
+            currentTurnEl.classList.remove('text-red-500', 'text-blue-500');
+            currentTurnEl.classList.add(currentTeam === 'IVA' ? 'text-red-500' : 'text-blue-500');
+
+            // Actualizar barra de progreso
+            const progressPercentage = (questionIndex / questions.length) * 100;
+            progressBar.style.width = `${progressPercentage}%`;
+            questionCountDisplay.textContent = `${questionIndex}`;
+        }
+
+        /**
+         * Muestra la pantalla final con el ganador.
+         */
+        function endGame() {
+            // Mostrar puntuaciones finales
+            finalScoreIVA_El.textContent = scores.IVA;
+            finalScoreIVB_El.textContent = scores.IVB;
+
+            // Determinar ganador
+            if (scores.IVA > scores.IVB) {
+                winnerMessageEl.textContent = "¡El Equipo IVA Gana!";
+                winnerMessageEl.classList.add('text-red-400');
+            } else if (scores.IVB > scores.IVA) {
+                winnerMessageEl.textContent = "¡El Equipo IVB Gana!";
+                winnerMessageEl.classList.add('text-blue-400');
+            } else {
+                winnerMessageEl.textContent = "¡Es un Empate!";
+                winnerMessageEl.classList.remove('text-red-400', 'text-blue-400');
+            }
+
+            // Cambiar pantallas
+            gameScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+        }
+
+        // --- 5. EVENT LISTENERS ---
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+
+    </script>
+</body>
+</html>
